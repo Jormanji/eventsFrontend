@@ -56,6 +56,12 @@ export const EventProvider = ({ children }) => {
     }
   };
 
+  // Add new event function
+  const addEvent = (newEvent) => {
+    setEvents((prevEvents) => [...prevEvents, newEvent]);
+    setFilteredEvents((prevFilteredEvents) => [...prevFilteredEvents, newEvent]); // Keep filters applied to new events
+  };
+
   const latestBookEvents = getLatestBookEvents(filteredEvents);
   const featuredBookEvents = getFeaturedBookEvents(filteredEvents);
 
@@ -67,6 +73,7 @@ export const EventProvider = ({ children }) => {
         latestBookEvents,
         featuredBookEvents,
         handleFilterChange,
+        addEvent, // Make sure the addEvent function is exposed in context
       }}
     >
       {children}
