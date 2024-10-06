@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { GoogleMap, useJsApiLoader, Marker } from "@react-google-maps/api";
+import { useUserContext } from "./userContext";
+import { useRouter } from "next/navigation";
 
 const containerStyle = {
   width: '100%',
@@ -7,31 +9,36 @@ const containerStyle = {
 };
 
 const center = {
-  lat: 37.7749, // Default to San Francisco (or any default center you prefer)
+  lat: 37.7749,
   lng: -122.4194
 };
 
 const libraries = ['places'];
 
 const AddEventForm = () => {
+  const router = useRouter();
   const [isFree, setIsFree] = useState(false);
   const [price, setPrice] = useState("");
-  const [currency, setCurrency] = useState("USD");
   const [location, setLocation] = useState({ lat: center.lat, lng: center.lng });
   const [address, setAddress] = useState("");
-  const [language, setLanguage] = useState("English"); // New language state
+  const [city, setCity] = useState(""); 
+  const [language, setLanguage] = useState("English");
+  const [category, setCategory] = useState(""); 
+  const [description, setDescription] = useState(""); 
   const [errorMessage, setErrorMessage] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
 
-  // Load Google Maps API
   const { isLoaded } = useJsApiLoader({
-    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY, // Use environment variable
+    googleMapsApiKey: process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY,
     libraries,
   });
+
+  const { user } = useUserContext();
 
   const handleCheckboxChange = (e) => {
     setIsFree(e.target.checked);
     if (e.target.checked) {
-      setPrice(""); // Clear price if the event is free
+      setPrice("");
     }
   };
 
@@ -40,45 +47,69 @@ const AddEventForm = () => {
     setPrice(value);
   };
 
-  const handleCurrencyChange = (e) => {
-    setCurrency(e.target.value);
+  const handleCategoryChange = (e) => {
+    setCategory(e.target.value);
   };
 
-  const handleLocationChange = (e) => {
-    setAddress(e.target.value);
+  const handleDescriptionChange = (e) => {
+    setDescription(e.target.value);
   };
 
-  const handleLanguageChange = (e) => {
-    setLanguage(e.target.value); // Update the language selection state
-  };
-
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Form submitted with data: ", {
-      eventName: e.target.eventName.value,
+    
+    if (!user) {
+      setErrorMessage("You need to be logged in to create an event.");
+      return;
+    }
+  
+    const eventData = {
+      name: e.target.eventName.value,
+      category,
+      description,
       startDate: e.target.startDate.value,
       endDate: e.target.endDate.value,
       isFree,
       price,
-      currency,
+      currency: "GBP",
       address,
+      city,
       location,
-      language, // Include language in the submitted data
-    });
+      language,
+      createdBy: user.username,
+    };
+  
+    try {
+      const response = await fetch('http://localhost:5000/api/events', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(eventData),
+      });
+  
+      if (response.ok) {
+        setSuccessMessage("Event created successfully!"); 
+        setTimeout(() => {
+          router.push('/');
+        }, 2000);
+      } else {
+        setErrorMessage("Failed to create the event.");
+      }
+    } catch (error) {
+      setErrorMessage("Error creating the event. Please try again.");
+    }
   };
 
   const handleMapClick = (e) => {
     const lat = e.latLng.lat();
     const lng = e.latLng.lng();
     setLocation({ lat, lng });
-  };
 
-  const geocodeAddress = () => {
     const geocoder = new window.google.maps.Geocoder();
-    geocoder.geocode({ address: address }, (results, status) => {
-      if (status === 'OK') {
-        const { lat, lng } = results[0].geometry.location;
-        setLocation({ lat: lat(), lng: lng() });
+    geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+      if (status === 'OK' && results[0]) {
+        setAddress(results[0].formatted_address);
       } else {
         setErrorMessage("Geocode was not successful for the following reason: " + status);
       }
@@ -89,44 +120,72 @@ const AddEventForm = () => {
     <form onSubmit={handleSubmit} className="w-full max-w-lg bg-white p-6 rounded-lg shadow-lg">
       <h2 className="text-2xl font-bold mb-4">Host an Event</h2>
 
-      {/* Error Message */}
       {errorMessage && <div className="text-red-500 mb-4">{errorMessage}</div>}
+      {successMessage && <div className="text-green-500 mb-4">{successMessage}</div>} 
 
-      {/* Event Name */}
       <div className="mb-4">
         <label htmlFor="eventName" className="block text-sm font-bold mb-2">Event Name</label>
         <input type="text" id="eventName" name="eventName" className="w-full p-2 border border-gray-300 rounded" required />
       </div>
 
-      {/* Start Date and Time */}
+      <div className="mb-4">
+        <label htmlFor="category" className="block text-sm font-bold mb-2">Event Category</label>
+        <select id="category" name="category" value={category} onChange={handleCategoryChange} className="w-full p-2 border border-gray-300 rounded" required>
+          <option value="">Select a category</option>
+          <option value="Book Signings">Book Signings</option>
+          <option value="Book Launches">Book Launches</option>
+          <option value="Book Clubs">Book Clubs</option>
+          <option value="Author Talks">Author Talks</option>
+          <option value="Literary Festivals">Literary Festivals</option>
+          <option value="Writing Workshops">Writing Workshops</option>
+          <option value="Poetry Readings">Poetry Readings</option>
+          <option value="Storytime">Storytime</option>
+          <option value="Book Fairs">Book Fairs</option>
+          <option value="Panel Discussions">Panel Discussions</option>
+          <option value="Creative Writing Classes">Creative Writing Classes</option>
+          <option value="Reading Marathons">Reading Marathons</option>
+          <option value="Library Events">Library Events</option>
+          <option value="Book Swaps">Book Swaps</option>
+          <option value="Genre-Specific Discussions">Genre-Specific Discussions</option>
+          <option value="Literary Awards Ceremonies">Literary Awards Ceremonies</option>
+          <option value="Illustrator Talks">Illustrator Talks</option>
+          <option value="Self-Publishing Workshops">Self-Publishing Workshops</option>
+          <option value="Translation Workshops">Translation Workshops</option>
+          <option value="Bookbinding and Preservation">Bookbinding and Preservation</option>
+        </select>
+      </div>
+
+      <div className="mb-4">
+        <label htmlFor="description" className="block text-sm font-bold mb-2">Event Description</label>
+        <textarea id="description" name="description" value={description} onChange={handleDescriptionChange} className="w-full p-2 border border-gray-300 rounded" required />
+      </div>
+
       <div className="mb-4">
         <label htmlFor="startDate" className="block text-sm font-bold mb-2">Start Date and Time</label>
-        <input type="datetime-local" id="startDate" name="startDate" className="w-full p-2 border border-gray-300 rounded" required />
+        <input type="datetime-local" id="startDate" name="startDate" className="w-full p-2 border border-gray-300 rounded" min="1900-01-01T00:00" 
+          max="2099-12-31T23:59" required />
       </div>
 
-      {/* End Date and Time */}
       <div className="mb-4">
         <label htmlFor="endDate" className="block text-sm font-bold mb-2">End Date and Time</label>
-        <input type="datetime-local" id="endDate" name="endDate" className="w-full p-2 border border-gray-300 rounded" required />
+        <input type="datetime-local" id="endDate" name="endDate" className="w-full p-2 border border-gray-300 rounded" min="1900-01-01T00:00" 
+          max="2099-12-31T23:59" required />
       </div>
 
-      {/* Location */}
       <div className="mb-4">
-        <label htmlFor="address" className="block text-sm font-bold mb-2">Event Location</label>
+        <label htmlFor="address" className="block text-sm font-bold mb-2">Event Address</label>
         <input 
           type="text" 
           id="address" 
           name="address" 
           value={address} 
-          onChange={handleLocationChange} 
+          onChange={(e) => setAddress(e.target.value)} 
           className="w-full p-2 border border-gray-300 rounded" 
           placeholder="Enter address" 
           required 
         />
-        <button type="button" onClick={geocodeAddress} className="mt-2 p-2 bg-primaryPurple text-white rounded">Find on Map</button>
       </div>
 
-      {/* Google Map */}
       {isLoaded && (
         <div className="mb-4">
           <GoogleMap
@@ -140,14 +199,13 @@ const AddEventForm = () => {
         </div>
       )}
 
-      {/* Language Selection */}
       <div className="mb-4">
         <label htmlFor="language" className="block text-sm font-bold mb-2">Event Language</label>
         <select 
           id="language" 
           name="language" 
           value={language} 
-          onChange={handleLanguageChange} 
+          onChange={(e) => setLanguage(e.target.value)} 
           className="w-full p-2 border border-gray-300 rounded"
           required
         >
@@ -160,7 +218,6 @@ const AddEventForm = () => {
         </select>
       </div>
 
-      {/* Is the event free? */}
       <div className="mb-4">
         <label className="block text-sm font-bold mb-2">
           <input type="checkbox" checked={isFree} onChange={handleCheckboxChange} className="mr-2" />
@@ -168,45 +225,22 @@ const AddEventForm = () => {
         </label>
       </div>
 
-      {/* Price and Currency (hidden if free) */}
       {!isFree && (
-        <div className="mb-4 flex gap-4">
-          <div className="w-1/2">
-            <label htmlFor="price" className="block text-sm font-bold mb-2">Price</label>
-            <input 
-              type="text" 
-              id="price" 
-              name="price" 
-              value={price} 
-              onChange={handlePriceChange} 
-              className="w-full p-2 border border-gray-300 rounded" 
-              placeholder="Enter price"
-              required={!isFree}
-            />
-          </div>
-          
-          <div className="w-1/2">
-            <label htmlFor="currency" className="block text-sm font-bold mb-2">Currency</label>
-            <select 
-              id="currency" 
-              name="currency" 
-              value={currency} 
-              onChange={handleCurrencyChange} 
-              className="w-full p-2 border border-gray-300 rounded"
-              required={!isFree}
-            >
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="GBP">GBP</option>
-              <option value="AUD">AUD</option>
-              <option value="CAD">CAD</option>
-              <option value="JPY">JPY</option>
-            </select>
-          </div>
+        <div className="mb-4">
+          <label htmlFor="price" className="block text-sm font-bold mb-2">Price (in GBP)</label>
+          <input 
+            type="text" 
+            id="price" 
+            name="price" 
+            value={price} 
+            onChange={handlePriceChange} 
+            className="w-full p-2 border border-gray-300 rounded" 
+            placeholder="Enter price"
+            required={!isFree}
+          />
         </div>
       )}
 
-      {/* Submit Button */}
       <div className="flex justify-end">
         <button type="submit" className="bg-primaryPurple text-white px-4 py-2 rounded hover:bg-secondaryPurple">Submit</button>
       </div>

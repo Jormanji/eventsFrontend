@@ -1,16 +1,26 @@
-// eventService.js
-import mockEventData from './mockEventData';
+import { fetchEvents } from './api'; 
 
 export async function fetchBookEvents() {
-  // Filter out events where the category is 'Books'
-  const bookEvents = mockEventData.events.filter(event => event.category.name === "Books");
-  return bookEvents;
+  try {
+    const events = await fetchEvents(); 
+    if (!events || !Array.isArray(events)) {
+      throw new Error("Invalid events data");
+    }
+    // Filter out events where the category is 'Books'
+    const bookEvents = events.filter(event => event.category?.name === "Books");
+    return bookEvents;
+  } catch (error) {
+    console.error("Error fetching book events:", error);
+    return [];
+  }
 }
 
 export function getLatestBookEvents(events) {
-  // Sort and return the latest 3 book events
-  const sortedEvents = events.sort((a, b) => new Date(b.start.local) - new Date(a.start.local));
-  return sortedEvents.slice(0, 4);
+  // Sort and return the latest 3 book events using startDate
+  const sortedEvents = events.sort((a, b) => 
+    new Date(b.startDate) - new Date(a.startDate)
+  );
+  return sortedEvents.slice(0, 3);
 }
 
 export function getFeaturedBookEvents(events) {

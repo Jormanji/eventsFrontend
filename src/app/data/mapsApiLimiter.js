@@ -1,6 +1,4 @@
-// src/app/data/mapsApiLimiter.js
-
-const MAX_REQUESTS_PER_DAY = 1000; // Adjust this as per your quota limit
+const MAX_REQUESTS_PER_DAY = 1000; 
 let apiRequestCount = 0;
 
 // Function to increment request count
@@ -11,7 +9,6 @@ export const incrementRequestCount = () => {
 
 // Function to check if we can make an API request
 export const canMakeApiRequest = () => {
-  // Retrieve the stored count from localStorage (optional, for persistence)
   const storedCount = localStorage.getItem('apiRequestCount');
   apiRequestCount = storedCount ? parseInt(storedCount, 10) : apiRequestCount;
 
